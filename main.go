@@ -7,6 +7,27 @@ import (
   "strings"
 )
 
+func getAllSinks() ([]string, error) {
+	cmd := exec.Command("pactl", "list", "short", "sinks")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	var sinks []string
+	lines := strings.Split(out.String(), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) > 1 {
+			sinkName := fields[1]
+			sinks = append(sinks, sinkName)
+		}
+	}
+	return sinks, nil
+}
+
 func getCurrentDefaultSink() (string, error) {
 	cmd := exec.Command("pactl", "info")
 	var out bytes.Buffer
@@ -69,20 +90,12 @@ func moveAllInputsToSink(sinkName string) error {
 
 func main() {
 
-  sinks := []string{"alsa_output.usb-SteelSeries_Arctis_7_-00.analog-stereo", "alsa_output.pci-0000_0a_00.1.hdmi-stereo"}
+  sinks, _ := getAllSinks()
 	currentSink, err := getCurrentDefaultSink()
 	if err != nil {
 		return
 	}
-
-  var nextSink string
-  if currentSink == sinks[0]{
-    nextSink = sinks[1]
-  }else{
-    nextSink = sinks[0]
-  }
-
-  setDefaultSink(nextSink)
+  nextSink, _ := cycleDefaultSink(sinks,currentSink)
 
 	moveAllInputsToSink(nextSink)
 }
